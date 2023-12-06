@@ -17,6 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from core.config import settings
 from core.exceptions import AiChatException
+from core.log import setup_logging
 from utils.commonality import SharedEnumMmap, calculate_md5, get_host_ip
 
 
@@ -164,6 +165,7 @@ class NacosHelper:
             if config_text:
                 # 处理配置文本的逻辑，更新应用程序配置等
                 self.load_conf()
+                setup_logging()
             # 可以选择在一段时间后再次运行 listener_conf 方法，或者根据需求进行其他逻辑
 
     def add_instance(self):

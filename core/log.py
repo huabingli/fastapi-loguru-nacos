@@ -12,8 +12,6 @@ from loguru import logger
 
 from core.config import request_id_var, request_time_it_var, settings
 
-LOG_LEVEL = logging.getLevelName(settings.log_level)
-
 
 def _logger_filter(record):
     record['extra'].update(request_id_var=request_id_var.get(None))
@@ -29,7 +27,7 @@ class InterceptHandler(logging.Handler):
             level = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
-
+        # print(level)
         # Find caller from where originated the logged message.
         frame, depth = inspect.currentframe(), 0
         while frame and (depth == 0 or frame.f_code.co_filename == logging.__file__):
@@ -40,9 +38,12 @@ class InterceptHandler(logging.Handler):
 
 
 def setup_logging():
+    # LOG_LEVEL = logging.getLevelName(settings.log_level)
+
     # intercept everything at the root logger
-    logging.root.handlers = [InterceptHandler()]
-    logging.root.setLevel(LOG_LEVEL)
+    # logging.root.handlers = [InterceptHandler()]
+    # logging.root.setLevel(LOG_LEVEL)
+    logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
     # remove every other logger's handlers
     # and propagate to root logger
@@ -56,12 +57,15 @@ def setup_logging():
     logger.disable('httpx')
     logger.disable('apscheduler')
     # logger.enable('qianfan')
-    logger.add(sys.stdout, colorize=True,
+    logger.add(sys.stdout, level=settings.log_level, colorize=True, enqueue=True,
                format='[<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green>] '
                       '[<magenta>{process.name}</magenta>:<yellow>{thread.name}</yellow>] '
                       '[<cyan>{name}</cyan>:<cyan>{function}</cyan>:<yellow>{line}</yellow>] '
                       '[<level>{level}</level>] '
                       '[{extra[request_id_var]}] '
                       '[{extra[request_time_it_var]}] '
-                      '<level>{message}</level>'
+                      '<level>{message}</level>',
                )
+    # logger.level(settings.log_level)
+    logging.info(f'初始化日志配置 {settings.log_level}')
+    # logging.info(settings.log_level)

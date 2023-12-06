@@ -26,9 +26,8 @@ class QianFan(BaseModel):
 class Base(BaseSettings):
     model_config = SettingsConfigDict(env_nested_delimiter='__', env_file=None)
 
-    debug: bool = True
     base_dir: Path = Path(__file__).resolve().parent.parent
-    log_level: str = 'DEBUG'
+    log_level: str = 'INFO'
 
     @property
     def base_dir_str(self) -> str:
@@ -52,3 +51,4 @@ class Settings(Base):
 
 if __name__ == '__main__':
     pass
+    # print(get_nacos_settings('dev'))

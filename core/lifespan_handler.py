@@ -8,16 +8,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from core.log import setup_logging
 from core.nacos import NacosHelper
 from utils.scheduler import scheduler
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    setup_logging()
     scheduler.start()
     nacos_helper = NacosHelper()
     # 第一次加载配置文件
-    nacos_helper.load_conf()
+    # nacos_helper.load_conf()
     # 监听配置是否有变化
     nacos_helper.run_listener_config_thread()
     # 注册实例
