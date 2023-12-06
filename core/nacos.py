@@ -8,7 +8,6 @@ import threading
 import time
 from enum import Enum
 from functools import cached_property, lru_cache
-from typing import Optional
 
 import httpx
 import yaml
@@ -18,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from core.config import settings
 from core.exceptions import AiChatException
-from utils.commonality import calculate_md5, get_host_ip
+from utils.commonality import SharedEnumMmap, calculate_md5, get_host_ip
 
 
 class EnvEnum(str, Enum):
@@ -28,7 +27,7 @@ class EnvEnum(str, Enum):
     prod = 'prod'
 
 
-environment: Optional[EnvEnum] = None
+environment = SharedEnumMmap()
 
 
 class Nacos(BaseSettings):
@@ -45,9 +44,9 @@ class Nacos(BaseSettings):
 
 
 @lru_cache()
-def get_nacos_settings(env: EnvEnum):
+def get_nacos_settings(env: SharedEnumMmap):
     from core.config import settings
-    return Nacos(_env_file=f'{settings.base_dir_str}/.env.{env.value}')
+    return Nacos(_env_file=f'{settings.base_dir_str}/.env.{env.read_enum_value()}')
 
 
 class NacosHelper:

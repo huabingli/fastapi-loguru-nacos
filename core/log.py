@@ -58,7 +58,7 @@ def setup_logging():
     # logger.enable('qianfan')
     logger.add(sys.stdout, colorize=True,
                format='[<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green>] '
-                      '[<magenta>{process}</magenta>:<yellow>{thread}</yellow>] '
+                      '[<magenta>{process.name}</magenta>:<yellow>{thread.name}</yellow>] '
                       '[<cyan>{name}</cyan>:<cyan>{function}</cyan>:<yellow>{line}</yellow>] '
                       '[<level>{level}</level>] '
                       '[{extra[request_id_var]}] '
