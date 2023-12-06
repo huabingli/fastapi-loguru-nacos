@@ -1,0 +1,11 @@
+log/
+venv/
+whoosh_index/
+.idea/
+.git/
+.gitignore
+**/__pycache__
+Dockerfile
+docker-compose.yml
+uploads/
+mysql-db/

@@ -1,0 +1,13 @@
+/log/
+whoosh_index/
+venv/
+.idea/
+uploads/
+test/
+mysql-db/
+/celerybeat-schedule
+/media/
+*.pyc
+.DS_Store
+test.py
+media/

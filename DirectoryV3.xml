@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<trees>
+    <tree path="/" title="主目录" extension="" presentableText="" tooltipTitle="" icon="" textColor=""
+          backgroundColor=""/>
+    <tree path="/main.py" title="程序总入口"/>
+    <tree path="/api" title="API控制器"/>
+    <!--     <tree path="/main.py" title="总程序"/>-->
+    <tree path="/config" title="项目配置目录"/>
+    <tree path="/core" title="核心目录"/>
+    <tree path="/schemas" title="数目验证和输入输出格式化目录"/>
+    <tree path="/db" title="数据库"/>
+    <tree path="/utils" title="工具函数"/>
+    <tree path="/tests" title="单元测试目录"/>
+    <tree path="/core/nacos.py" title="nacos的配置"/>
+    <tree path="/core/config.py" title="通用配置加载器"/>
+    <tree path="/core/exceptions.py" title="异常处理器"/>
+    <tree path="/core/settings.py" title="项目设置"/>
+    <tree path="/db/base.py" title="数据库模型基类"/>
+    <tree path="/crud" title="数据库操作工具"/>
+    <tree path="/db/session.py" title="数据库会话相关"/>
+    <tree path="/models" title="数据库模型"/>
+    <tree path="/core/log.py" title="日志工具"/>
+    <tree path="/utils/cache.py" title="缓存工具"/>
+    <tree path="/utils/response.py" title="HTTP相应工具"/>
+    <tree path="/core/middleware.py" title="中间件"/>
+    <tree path="/core/security.py" title="用户认证" extension="" presentableText="" tooltipTitle="" icon=""
+          textColor="" backgroundColor=""/>
+    <tree path="/.env.dev" title="dev环境"/>
+    <tree path="/.env.pre" title="pre环境"/>
+    <tree path="/.env.prod" title="prod环境"/>
+    <tree path="/.env.test" title="test环境"/>
+
+</trees>
