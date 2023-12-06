@@ -16,16 +16,14 @@ from utils.scheduler import scheduler
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     setup_logging()
-    scheduler.start()
+    # scheduler.start()
     nacos_helper = NacosHelper()
     # 第一次加载配置文件
     # nacos_helper.load_conf()
     # 监听配置是否有变化
     nacos_helper.run_listener_config_thread()
-    # 注册实例
-    nacos_helper.add_instance()
     # 发送心跳到nacos
-    scheduler.add_job(nacos_helper.put_instance, 'interval', seconds=5)
+    # scheduler.add_job(nacos_helper.put_instance, 'interval', seconds=5)
     yield
     scheduler.shutdown()
     nacos_helper.close()

@@ -4,6 +4,7 @@
 # @时间       :2023/12/5 上午10:14
 # @作者       :lihb
 # @说明       : 进行读写配置和注册服务
+import json
 import threading
 import time
 from enum import Enum
@@ -56,7 +57,7 @@ class NacosHelper:
         self._content_md5 = None
         self.settings = get_nacos_settings(environment)
         self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36',
+            # 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36',
             'Content-Type': 'application/x-www-form-urlencoded',
         }
         self.client = httpx.Client(base_url=str(self.settings.server_add), headers=self.headers, timeout=30)
@@ -143,7 +144,7 @@ class NacosHelper:
             self.err_status(res)
             logger.debug(f'监听nacos配置是否改变, status: {res.status_code}, 内容{"有变化" if res.text else "未变化"}')
             return res.text
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, AiChatException) as exc:
             logger.exception(exc)
             time.sleep(18)
             return False
@@ -157,6 +158,14 @@ class NacosHelper:
         listener_thread.daemon = True
         # 启动新线程
         listener_thread.start()
+        # 注册实例
+        self.add_instance()
+        # 使用 threading.Thread 创建一个新线程，目标为 put_instance 方法
+        instance_thread = threading.Thread(target=self.put_instance_worker)
+        # 将新线程设置为守护线程，确保主程序退出时线程也会退出
+        instance_thread.daemon = True
+        # 启动新线程
+        instance_thread.start()
 
     def listener_thread_worker(self):
         """线程工作函数，用于运行 listener_conf 方法"""
@@ -168,6 +177,12 @@ class NacosHelper:
                 setup_logging()
             # 可以选择在一段时间后再次运行 listener_conf 方法，或者根据需求进行其他逻辑
 
+    def put_instance_worker(self):
+        """线程工作函数，用于运行 put_instance 方法"""
+        while True:
+            time.sleep(4)
+            self.put_instance()
+
     def add_instance(self):
         """注册一个实例到nacos。
 
@@ -175,14 +190,18 @@ class NacosHelper:
         """
         url = '/nacos/v1/ns/instance'
         params = {
+            'accessToken': self.get_nacos_token,
             'port': self.settings.app_port,
-            'healthy': True,
-            'ip': self.settings.app_ip,
+            'ip': str(self.settings.app_ip),
             'weight': 1.0,
             'serviceName': self.settings.app_name,
             'groupName': self.settings.group,
-            'encoding': 'GBK',
-            'namespaceId': self.settings.namespace
+            'encoding': 'UTF-8',
+            'enabled': 'true',
+            'healthy': 'true',
+            'namespaceId': self.settings.namespace,
+            "metadata": json.dumps({"preserved.register.source": "SPRING_CLOUD"})
+            # 'metadata': {"preserved.register.source": "SPRING_CLOUD"}
         }
         res = self.client.post(url, params=params)
         self.err_status(res)
@@ -198,7 +217,7 @@ class NacosHelper:
         params = {
             'accessToken': self.get_nacos_token,
             'serviceName': self.settings.app_name,
-            'ip': self.settings.app_ip,
+            'ip': str(self.settings.app_ip),
             'port': self.settings.app_port,
             'groupName': self.settings.group,
             'enabled': 'false',
@@ -219,7 +238,7 @@ class NacosHelper:
         params = {
             'accessToken': self.get_nacos_token,
             'serviceName': self.settings.app_name,
-            'ip': self.settings.app_ip,
+            'ip': str(self.settings.app_ip),
             'port': self.settings.app_port,
             'groupName': self.settings.group,
             'namespaceId': self.settings.namespace,
@@ -229,23 +248,37 @@ class NacosHelper:
         logger.debug(f'查询实例详情 {res.text}')
         return res.text
 
+    @cached_property
+    def _put_instance_params(self):
+        params = {
+            # 'accessToken': self.get_nacos_token,
+            'encoding': 'UTF-8',
+            'serviceName': f"{self.settings.group}@@{self.settings.app_name}",
+            'namespaceId': self.settings.namespace,
+            'app': 'unknown',
+            'beat': json.dumps({"cluster": "DEFAULT", "ip": str(self.settings.app_ip),
+                                "metadata": {"preserved.register.source": "SPRING_CLOUD"}, "period": 5000,
+                                "port": self.settings.app_port, "scheduled": False,
+                                "serviceName": f"{self.settings.group}@@{self.settings.app_name}", "stopped": False,
+                                "weight": 1.0})
+        }
+        return params
+
     def put_instance(self):
         """发送实例的心跳
 
         :return:
         """
         url = f'/nacos/v1/ns/instance/beat'
-        params = {
-            'port': self.settings.app_port,
-            'ip': self.settings.app_ip,
-            'serviceName': self.settings.app_name,
-            'groupName': self.settings.group,
-            'namespaceId': self.settings.namespace,
-            'beat': self.get_instance
-        }
-        res = self.client.put(url, params=params)
-        self.err_status(res)
+
+        try:
+            res = self.client.put(url, params=self._put_instance_params)
+            self.err_status(res)
+        except (httpx.HTTPError, AiChatException) as exc:
+            logger.exception(exc)
+            return False
         res_json = res.json()
+
         logger.debug(f'发送实例心跳 {res_json}')
         return res_json['lightBeatEnabled']
 
