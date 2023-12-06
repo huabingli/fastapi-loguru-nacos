@@ -10,7 +10,6 @@ from fastapi import FastAPI
 
 from core.log import setup_logging
 from core.nacos import NacosHelper
-from utils.scheduler import scheduler
 
 
 @asynccontextmanager
@@ -25,5 +24,5 @@ async def lifespan(_: FastAPI):
     # 发送心跳到nacos
     # scheduler.add_job(nacos_helper.put_instance, 'interval', seconds=5)
     yield
-    scheduler.shutdown()
+    # scheduler.shutdown()
     nacos_helper.close()

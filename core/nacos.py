@@ -161,7 +161,7 @@ class NacosHelper:
         # 注册实例
         self.add_instance()
         # 使用 threading.Thread 创建一个新线程，目标为 put_instance 方法
-        instance_thread = threading.Thread(target=self.put_instance_worker)
+        instance_thread = threading.Thread(target=self.instance_beat_thread_worker)
         # 将新线程设置为守护线程，确保主程序退出时线程也会退出
         instance_thread.daemon = True
         # 启动新线程
@@ -177,7 +177,7 @@ class NacosHelper:
                 setup_logging()
             # 可以选择在一段时间后再次运行 listener_conf 方法，或者根据需求进行其他逻辑
 
-    def put_instance_worker(self):
+    def instance_beat_thread_worker(self):
         """线程工作函数，用于运行 put_instance 方法"""
         while True:
             time.sleep(4)
