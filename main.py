@@ -1,3 +1,4 @@
+import os
 from typing import Annotated
 
 import typer
@@ -9,7 +10,7 @@ from core.config import settings
 from core.exceptions import exception_handler
 from core.lifespan_handler import lifespan
 from core.middleware import add_middleware
-from core.nacos import EnvEnum, environment, get_nacos_settings
+from core.nacos import EnvEnum, environment_name, get_nacos_settings
 
 app = FastAPI(lifespan=lifespan)
 add_middleware(app)
@@ -18,11 +19,11 @@ app.include_router(router=router)
 
 
 def run(
-        env: Annotated[EnvEnum, typer.Option(help='需要加载的环境')] = EnvEnum.dev.value,
+        env: Annotated[EnvEnum, typer.Option(help='需要加载的环境')] = EnvEnum.local.value,
         debug: Annotated[bool, typer.Option(help='是否需要开启debug模式，开启后会自动重载')] = False
 
 ):
-    environment.write_enum_value(env.value)
+    os.environ[environment_name] = env.value
     import uvicorn
 
     uvicorn.run(
@@ -30,10 +31,9 @@ def run(
             reload=debug,
             reload_excludes=['DirectoryV3.xml'],
             app_dir=settings.base_dir_str,
-            host=str(get_nacos_settings(environment).app_ip),
-            port=get_nacos_settings(environment).app_port
+            host=str(get_nacos_settings().app_ip),
+            port=get_nacos_settings().app_port
     )
-    environment.close()
 
 
 if __name__ == '__main__':

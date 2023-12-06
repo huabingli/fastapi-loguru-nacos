@@ -5,10 +5,11 @@
 # @作者       :lihb
 # @说明       : 进行读写配置和注册服务
 import json
+import os
 import threading
 import time
 from enum import Enum
-from functools import cached_property, lru_cache
+from functools import cached_property
 
 import httpx
 import yaml
@@ -19,43 +20,45 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from core.config import settings
 from core.exceptions import AiChatException
 from core.log import setup_logging
-from utils.commonality import SharedEnumMmap, calculate_md5, get_host_ip
+from utils.commonality import calculate_md5, get_host_ip
 
 
 class EnvEnum(str, Enum):
+    local = 'local'
     dev = 'dev'
     test = 'test'
     pre = 'pre'
     prod = 'prod'
 
 
-environment = SharedEnumMmap()
+environment_name = "ENVIRONMENT_NACOS"
 
 
 class Nacos(BaseSettings):
-    app_name: str = Field('zw-ai-chat', description='app名称')
+    app_name: str = Field(..., description='app名称')
     app_ip: IPvAnyAddress = Field(default_factory=get_host_ip, description='本机IP地址')
-    app_port: int = Field(8000, description='启动端口号')
-    server_add: HttpUrl = Field('http://192.168.90.108:8848', description='nacos的地址')
+    app_port: int = Field(..., description='启动端口号')
+    server_add: HttpUrl = Field(..., description='nacos的地址')
     file_extension: str = Field('yml', description='文件类型')
-    namespace: str = Field('5d540982-f0c0-4717-874a-8fee7d44440a', description='nacos命名空间')
-    group: str = Field('DEV_GROUP', description='nacos组')
-    username: str = Field('nacos', description='nacos用户')
-    password: str = Field('zwjy@2021', description='nacos组')
+    namespace: str = Field(..., description='nacos命名空间')
+    group: str = Field(..., description='nacos组')
+    username: str = Field(..., description='nacos用户')
+    password: str = Field(..., description='nacos组')
     model_config = SettingsConfigDict(env_prefix='nacos_')
 
 
-@lru_cache()
-def get_nacos_settings(env: SharedEnumMmap):
+def get_nacos_settings():
     from core.config import settings
-    return Nacos(_env_file=f'{settings.base_dir_str}/.env.{env.read_enum_value()}')
+    environment = os.environ.get(environment_name)
+    nacos = Nacos(_env_file=f'{settings.base_dir_str}/.env.{environment}')
+    return nacos
 
 
 class NacosHelper:
     def __init__(self):
         self._cached_token = None
         self._content_md5 = None
-        self.settings = get_nacos_settings(environment)
+        self.settings = get_nacos_settings()
         self.headers = {
             # 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36',
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -119,12 +122,15 @@ class NacosHelper:
             'group': self.settings.group
         }
         res = self.client.get(url, params=params)
-        self.err_status(res)
+        try:
+            self.err_status(res)
+        except AiChatException as e:
+            logger.exception(e)
+            raise AiChatException(e.message)
         text = res.text
         logger.info(f'获取nacos配置\n{text}')
         self._content_md5 = calculate_md5(text)
         settings.update_data(yaml.safe_load(text))
-        # settings = settings.model_validate(yaml.safe_load(text))
         logger.info(f'重新加载setting配置 {settings.model_dump_json(indent=2)}')
         return text
 
