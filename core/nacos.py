@@ -59,6 +59,7 @@ class NacosHelper:
         self._cached_token = None
         self._content_md5 = None
         self.settings = get_nacos_settings()
+        self._lock = threading.Lock()
         self.headers = {
             # 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36',
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -85,29 +86,31 @@ class NacosHelper:
     @property
     def get_nacos_token(self):
         """获取nacos token"""
-        if hasattr(self, '_cached_token') and self._cached_token and self._cached_token.get('expiration_time', 0) > int(
-                time.time() * 1000):
+        if self._cached_token and self._cached_token.get('expiration_time', 0) > int(time.time()):
             return self._cached_token.get('accessToken')  # 返回缓存的 token 数据
-        nacos_uri = f'/nacos/v1/auth/login'
+        with self._lock:
+            if self._cached_token and self._cached_token.get('expiration_time', 0) > int(time.time()):
+                return self._cached_token.get('accessToken')
+            nacos_uri = f'/nacos/v1/auth/login'
 
-        data = {
-            'username': self.settings.username,
-            'password': self.settings.password
-        }
-        response = self.client.post(nacos_uri, data=data)
-        response.raise_for_status()
-        token_data = response.json()
+            data = {
+                'username': self.settings.username,
+                'password': self.settings.password
+            }
+            response = self.client.post(nacos_uri, data=data)
+            response.raise_for_status()
+            token_data = response.json()
 
-        token_info = {
-            'accessToken': token_data['accessToken'],
-            'tokenTtl': token_data['tokenTtl'],
-            'expiration_time': int(time.time() * 1000) + token_data['tokenTtl'] * 1000
-        }
-        logger.info(f'获取nacos的token: {token_info}')
-        # 缓存 token 数据
-        self._cached_token = token_info
+            token_info = {
+                'accessToken': token_data['accessToken'],
+                'tokenTtl': token_data['tokenTtl'],
+                'expiration_time': int(time.time() * 1000) + token_data['tokenTtl'] * 1000
+            }
+            logger.info(f'获取nacos的token: {token_info}')
+            # 缓存 token 数据
+            self._cached_token = token_info
 
-        return token_info['accessToken']
+            return token_info['accessToken']
 
     def load_conf(self):
         """ 获取nacos配置
@@ -148,7 +151,7 @@ class NacosHelper:
         try:
             res = self.client.post(url, data=data, headers=headers, timeout=timeout + 10)
             self.err_status(res)
-            logger.debug(f'监听nacos配置是否改变, status: {res.status_code}, 内容{"有变化" if res.text else "未变化"}')
+            logger.trace(f'监听nacos配置是否改变, status: {res.status_code}, 内容{"有变化" if res.text else "未变化"}')
             return res.text
         except (httpx.HTTPError, AiChatException) as exc:
             logger.exception(exc)
@@ -159,7 +162,7 @@ class NacosHelper:
     def run_listener_config_thread(self):
         """后台运行监听nacos配置实例"""
         # 使用 threading.Thread 创建一个新线程，目标为 listener_conf 方法
-        listener_thread = threading.Thread(target=self.listener_thread_worker)
+        listener_thread = threading.Thread(target=self.listener_thread_worker, name='listener-thread')
         # 将新线程设置为守护线程，确保主程序退出时线程也会退出
         listener_thread.daemon = True
         # 启动新线程
@@ -167,7 +170,7 @@ class NacosHelper:
         # 注册实例
         self.add_instance()
         # 使用 threading.Thread 创建一个新线程，目标为 put_instance 方法
-        instance_thread = threading.Thread(target=self.instance_beat_thread_worker)
+        instance_thread = threading.Thread(target=self.instance_beat_thread_worker, name='instance-beat-thread')
         # 将新线程设置为守护线程，确保主程序退出时线程也会退出
         instance_thread.daemon = True
         # 启动新线程
@@ -285,7 +288,7 @@ class NacosHelper:
             return False
         res_json = res.json()
 
-        logger.debug(f'发送实例心跳 {res_json}')
+        logger.trace(f'发送实例心跳 {res_json}')
         return res_json['lightBeatEnabled']
 
     def close(self):
